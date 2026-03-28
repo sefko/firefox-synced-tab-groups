@@ -22,6 +22,37 @@ window.addEventListener("scroll", () => {
 
 let _lastRes = null;
 
+// ── Persistent State ─────────────────────────────────────────
+
+let _collapsedState = {};
+
+async function loadCollapsedState() {
+  try {
+    const { collapsedState } = await browser.storage.local.get("collapsedState");
+    _collapsedState = collapsedState || {};
+  } catch (e) {
+    console.error("Failed to load collapsed state:", e);
+    _collapsedState = {};
+  }
+}
+
+async function saveCollapsedState() {
+  try {
+    await browser.storage.local.set({ collapsedState: _collapsedState });
+  } catch (e) {
+    console.error("Failed to save collapsed state:", e);
+  }
+}
+
+function isCollapsed(key, defaultVal) {
+  return _collapsedState[key] ?? defaultVal;
+}
+
+function setCollapsed(key, val) {
+  _collapsedState[key] = val;
+  saveCollapsedState();
+}
+
 // ── Helpers ──────────────────────────────────────────────────
 
 function showError(msg) {
@@ -238,7 +269,9 @@ function render(res, query = "") {
     const totalTabs = filteredGroups.reduce((n, { filteredTabs }) => n + filteredTabs.length, 0)
                     + filteredUngrouped.length;
 
-    const deviceCollapsedAttr = isCurrentDevice ? " data-collapsed" : "";
+    const deviceKey = `device:${devId}`;
+    const deviceIsCollapsed = isCollapsed(deviceKey, isCurrentDevice);
+    const deviceCollapsedAttr = deviceIsCollapsed ? " data-collapsed" : "";
     html.push(`<section class="device" data-device-id="${esc(devId)}"${deviceCollapsedAttr}>`);
 
     // ── Device header ──────────────────────────────────────
@@ -252,18 +285,20 @@ function render(res, query = "") {
     html.push(`</div>`);
 
     // ── Device body ────────────────────────────────────────
-    const bodyStyle = isCurrentDevice ? ' style="display:none"' : "";
+    const bodyStyle = deviceIsCollapsed ? ' style="display:none"' : "";
     html.push(`<div class="device__body"${bodyStyle}>`);
 
     // Named groups — use origIdx for the load action
     for (const { origIdx, group: g, filteredTabs } of filteredGroups) {
       const gTitle = g.title || "Group";
       const hex    = groupColor(g.color);
-      const groupCollapsedAttr = isCurrentDevice ? " data-collapsed" : "";
+      const groupKey = `group:${devId}:${gTitle}`;
+      const groupIsCollapsed = isCollapsed(groupKey, isCurrentDevice);
+      const groupCollapsedAttr = groupIsCollapsed ? " data-collapsed" : "";
 
       html.push(`<div class="group"${groupCollapsedAttr}>`);
       // Order: chevron | swatch | name | [Load btn] | pill count
-      html.push(`<div class="group-label" data-role="group-toggle">`);
+      html.push(`<div class="group-label" data-role="group-toggle" data-group-title="${esc(gTitle)}">`);
       html.push(CHEVRON_SM);
       html.push(`<span class="swatch" style="background:${hex}"></span>`);
       html.push(`<span class="group-label__text">${esc(gTitle)}</span>`);
@@ -278,9 +313,13 @@ function render(res, query = "") {
 
     // Ungrouped
     if (!q || filteredUngrouped.length > 0) {
-      const groupCollapsedAttr = isCurrentDevice ? " data-collapsed" : "";
+      const gTitle = "Ungrouped";
+      const groupKey = `group:${devId}:${gTitle}`;
+      const groupIsCollapsed = isCollapsed(groupKey, isCurrentDevice);
+      const groupCollapsedAttr = groupIsCollapsed ? " data-collapsed" : "";
+
       html.push(`<div class="group"${groupCollapsedAttr}>`);
-      html.push(`<div class="group-label" data-role="group-toggle">`);
+      html.push(`<div class="group-label" data-role="group-toggle" data-group-title="${esc(gTitle)}">`);
       html.push(CHEVRON_SM);
       html.push(`<span class="swatch" style="background:#94a3b8"></span>`);
       html.push(`<span class="group-label__text">Ungrouped</span>`);
@@ -312,9 +351,14 @@ function attachListeners(devices) {
       // If the click landed on or inside the load button, ignore — let the button handle it
       if (ev.target.closest("[data-role='load-device']")) return;
       const section = head.closest(".device");
+      const devId   = section.getAttribute("data-device-id");
       const body    = section.querySelector(".device__body");
       const nowCollapsed = section.toggleAttribute("data-collapsed");
       if (body) body.style.display = nowCollapsed ? "none" : "";
+      
+      if (devId) {
+        setCollapsed(`device:${devId}`, nowCollapsed);
+      }
     });
   });
 
@@ -322,7 +366,16 @@ function attachListeners(devices) {
   elRoot.querySelectorAll('[data-role="group-toggle"]').forEach(label => {
     label.addEventListener("click", ev => {
       if (ev.target.closest(".btn-load")) return;
-      label.closest(".group").toggleAttribute("data-collapsed");
+      const group = label.closest(".group");
+      const section = label.closest(".device");
+      const devId = section?.getAttribute("data-device-id");
+      const gTitle = label.getAttribute("data-group-title");
+      
+      const nowCollapsed = group.toggleAttribute("data-collapsed");
+      
+      if (devId && gTitle) {
+        setCollapsed(`group:${devId}:${gTitle}`, nowCollapsed);
+      }
     });
   });
 
@@ -442,6 +495,7 @@ async function requestState(kind) {
 async function boot() {
   setLoading(true); clearError();
   try {
+    await loadCollapsedState();
     render(await requestState("get"));
   } catch (e) { showError(e?.message ?? String(e)); }
   finally { setLoading(false); }
@@ -460,8 +514,14 @@ if (btnHeaderSettings) {
 }
 
 browser.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.useThemeColors) {
-    syncAllThemeColors();
+  if (area === "local") {
+    if (changes.useThemeColors) {
+      syncAllThemeColors();
+    }
+    if (changes.collapsedState) {
+      _collapsedState = changes.collapsedState.newValue || {};
+      if (_lastRes) render(_lastRes, elSearch.value);
+    }
     return;
   }
   if (area !== "sync") return;
