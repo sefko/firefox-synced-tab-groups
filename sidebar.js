@@ -168,7 +168,13 @@ function render(res, query = "") {
   const { deviceId, data } = res;
   const devices   = (data && data.devices) || {};
   const ids       = Object.keys(devices);
-  const sortedIds = ids.sort((a, b) => (devices[b]?.lastSync ?? 0) - (devices[a]?.lastSync ?? 0));
+  
+  // Preliminary sorting to ensure the current device is prioritized
+  const sortedIds = ids.sort((a, b) => {
+    if (a === deviceId) return -1;
+    if (b === deviceId) return 1;
+    return (devices[b]?.lastSync ?? 0) - (devices[a]?.lastSync ?? 0);
+  });
 
   if (sortedIds.length === 0) {
     const panel = noOtherDevicesPanel(res);
@@ -182,8 +188,29 @@ function render(res, query = "") {
 
   const q    = query.trim().toLowerCase();
   const html = [];
+  
+  // Identify potential duplicates of the local device to hide them
+  const localDevice = devices[deviceId];
+  const hiddenIds = new Set();
+  if (localDevice) {
+    for (const id of sortedIds) {
+      if (id === deviceId) continue;
+      const d = devices[id];
+      // If a remote device has the same name and identical tabs, it's likely a split identity
+      if (d && d.deviceName === localDevice.deviceName) {
+        // Simple comparison: same group count and tab count
+        const localTabs = (localDevice.groups || []).reduce((n, g) => n + (g.tabs?.length || 0), 0) + (localDevice.ungroupedTabs?.length || 0);
+        const dTabs = (d.groups || []).reduce((n, g) => n + (g.tabs?.length || 0), 0) + (d.ungroupedTabs?.length || 0);
+        if (localTabs === dTabs && localTabs > 0) {
+           // We'll hide it if it's an exact match of the local device
+           hiddenIds.add(id);
+        }
+      }
+    }
+  }
 
   for (const devId of sortedIds) {
+    if (hiddenIds.has(devId)) continue;
     const d         = devices[devId] || {};
     const name      = d.deviceName || "Unknown device";
     const groups    = Array.isArray(d.groups)       ? d.groups       : [];

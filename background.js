@@ -36,6 +36,9 @@ const DEBOUNCE_MS = 450;
 /** Serialize concurrent Sync writes */
 let syncWriteChain = Promise.resolve();
 
+/** Cache the device ID promise to avoid concurrent generation/re-claim races */
+let deviceIdPromise = null;
+
 /** Store the last known system dark mode preference reported by the sidebar */
 let lastKnownSystemIsDark = false;
 
@@ -166,14 +169,115 @@ function isUsableUrl(url) {
 }
 
 /**
+ * Helper to compare two snapshots by tab URLs. Returns 0..1.
+ */
+function calculateSnapshotSimilarity(s1, s2) {
+  const getUrls = (snap) => {
+    const urls = [];
+    if (snap.groups) {
+      for (const g of snap.groups) {
+        if (g.tabs) {
+          for (const t of g.tabs) if (t.url) urls.push(t.url);
+        }
+      }
+    }
+    if (snap.ungroupedTabs) {
+      for (const t of snap.ungroupedTabs) if (t.url) urls.push(t.url);
+    }
+    return urls;
+  };
+
+  const u1 = getUrls(s1);
+  const u2 = getUrls(s2);
+  if (u1.length === 0 && u2.length === 0) return 1.0;
+  if (u1.length === 0 || u2.length === 0) return 0.0;
+
+  const set1 = new Set(u1);
+  const set2 = new Set(u2);
+  let intersect = 0;
+  for (const u of set1) {
+    if (set2.has(u)) intersect++;
+  }
+  return intersect / Math.max(set1.size, set2.size);
+}
+
+/**
  * Ensure a stable random device id (service workers have no localStorage — use storage.local).
+ * If no local id exists, try to re-claim an existing one from storage.sync by matching
+ * device name and current window contents.
  */
 async function ensureDeviceId() {
-  const { [LOCAL_DEVICE_ID_KEY]: existing } = await browser.storage.local.get(LOCAL_DEVICE_ID_KEY);
-  if (existing) return existing;
-  const id = crypto.randomUUID();
-  await browser.storage.local.set({ [LOCAL_DEVICE_ID_KEY]: id });
-  return id;
+  if (deviceIdPromise) return deviceIdPromise;
+  deviceIdPromise = (async () => {
+    const { [LOCAL_DEVICE_ID_KEY]: existing } = await browser.storage.local.get(LOCAL_DEVICE_ID_KEY);
+    if (existing) return existing;
+
+    // No local ID. Let's see if we can re-claim one from Sync.
+    // On a fresh install/re-install, storage.sync might take a moment to pull data from the server.
+    // We try twice with a small delay if the first attempt finds nothing.
+    let devices = [];
+    const name = await getDeviceDisplayName();
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const allSync = await browser.storage.sync.get(null);
+      devices = [];
+      for (const [k, v] of Object.entries(allSync)) {
+        if (k.startsWith(DEVICE_SNAPSHOT_KEY_PREFIX)) {
+          const id = k.slice(DEVICE_SNAPSHOT_KEY_PREFIX.length);
+          if (id && v && typeof v === "object") {
+            devices.push({ id, snapshot: v });
+          }
+        }
+      }
+
+      if (devices.length > 0) {
+        const win = await getLastFocusedNormalWindow().catch(() => null);
+        if (win && !win.incognito) {
+          const currentSnap = await captureWindowSnapshot(win.id).catch(() => null);
+          if (currentSnap) {
+            let bestId = null;
+            let bestScore = 0;
+            for (const d of devices) {
+              const score = calculateSnapshotSimilarity(currentSnap, d.snapshot);
+              if (score > bestScore) {
+                bestScore = score;
+                bestId = d.id;
+              }
+            }
+            // High confidence match by tabs (even if name changed)
+            if (bestId && bestScore > 0.8) {
+              await browser.storage.local.set({ [LOCAL_DEVICE_ID_KEY]: bestId });
+              return bestId;
+            }
+          }
+        }
+
+        // No strong tab match. Fall back to matching by device name if name is custom.
+        const { [LOCAL_DEVICE_NAME_KEY]: customName } = await browser.storage.local.get(LOCAL_DEVICE_NAME_KEY);
+        if (customName && customName.trim()) {
+          const nameMatches = devices.filter((d) => d.snapshot.deviceName === name);
+          if (nameMatches.length === 1) {
+            const bestId = nameMatches[0].id;
+            await browser.storage.local.set({ [LOCAL_DEVICE_ID_KEY]: bestId });
+            return bestId;
+          }
+        }
+        
+        // If we found devices but none matched, don't wait for more (Sync is probably up to date)
+        break;
+      }
+
+      if (attempt === 0) {
+        // Wait 1.5s for Sync to potentially pull data on first run
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+
+    const id = crypto.randomUUID();
+    await browser.storage.local.set({ [LOCAL_DEVICE_ID_KEY]: id });
+    return id;
+  })();
+  return deviceIdPromise;
 }
 
 /**
@@ -232,10 +336,20 @@ async function readSyncPayload() {
     if (id && v && typeof v === "object") devices[id] = v;
   }
   // If migration hasn’t run on another synced client yet, still surface legacy devices.
+  // But avoid duplicates if the same data already exists under a new key.
   const legacy = all[LEGACY_SYNC_BLOB_KEY];
   if (legacy && legacy.devices && typeof legacy.devices === "object") {
     for (const [id, snap] of Object.entries(legacy.devices)) {
-      if (!(id in devices) && snap && typeof snap === "object") devices[id] = snap;
+      if (!(id in devices) && snap && typeof snap === "object") {
+        // Check if this legacy device is already present with a different ID
+        const isDuplicate = Object.values(devices).some(d => 
+          d.deviceName === snap.deviceName && 
+          calculateSnapshotSimilarity(d, snap) > 0.95
+        );
+        if (!isDuplicate) {
+          devices[id] = snap;
+        }
+      }
     }
   }
   return { devices };
