@@ -1,0 +1,10 @@
+# Ignore the zip files
+*.zip
+*.xpi
+
+# Ignore the web-ext tool's output
+web-ext-artifacts/
+
+# Ignore OS junk
+.DS_Store
+Thumbs.db

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Tab Groups Sync",
+  "name": "Synced Tab Groups",
   "version": "1.0.0",
   "description": "Sync tab groups across devices using Firefox Account (storage.sync). Requires Firefox 138+ for tab groups APIs.",
   "browser_specific_settings": {
