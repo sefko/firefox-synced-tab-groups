@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tab Groups Sync — Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <h1 class="h1">Tab Groups Sync</h1>
+      <p class="lead">
+        This name appears in the sidebar next to your synced snapshot. Clear the field to use the automatic label
+        (browser + OS).
+      </p>
+
+      <label class="label" for="displayName">Device display name</label>
+      <input id="displayName" class="input" type="text" maxlength="120" autocomplete="off" />
+
+      <div class="setting-row">
+        <div class="setting-text">
+          <label class="label" for="useThemeColors">Use theme colors</label>
+          <p class="hint">Use colors from your current Firefox theme instead of the default extension colors.</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="useThemeColors">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <p class="hint" id="deviceIdHint"></p>
+
+      <div class="row">
+        <button type="button" id="save" class="btn">Save</button>
+        <span id="status" class="status" aria-live="polite"></span>
+      </div>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

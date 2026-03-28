@@ -1,0 +1,142 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 40px;
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.lead {
+  margin: 0 0 16px;
+  color: color-mix(in oklab, CanvasText 72%, Canvas);
+  line-height: 1.5;
+}
+
+.label {
+  display: block;
+  font-weight: 650;
+  margin-top: 24px;
+}
+
+.input {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, CanvasText 18%, Canvas);
+  background: Canvas;
+  color: CanvasText;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 32px;
+  max-width: 560px;
+  gap: 16px;
+}
+
+.setting-text .label {
+  margin-top: 0;
+}
+
+.setting-text .hint {
+  margin-top: 4px;
+}
+
+/* ── Switch ─────────────────────────────────────────────── */
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: color-mix(in oklab, CanvasText 15%, Canvas);
+  transition: .2s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
+
+input:checked + .slider {
+  background-color: #2563eb;
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 0 2px color-mix(in oklab, #2563eb 40%, transparent);
+}
+
+.hint {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: color-mix(in oklab, CanvasText 55%, Canvas);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, CanvasText 18%, Canvas);
+  background: color-mix(in oklab, #2563eb 12%, Canvas);
+  color: CanvasText;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.status {
+  font-size: 13px;
+  color: color-mix(in oklab, #15803d 70%, CanvasText);
+}

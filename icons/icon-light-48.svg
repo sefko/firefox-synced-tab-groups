@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" fill="none">
+  <!-- Minimalist Tab Sync Icon: Dark strokes for light backgrounds -->
+  <path d="M6 9C6 5.68629 8.68629 3 12 3H36C39.3137 3 42 5.68629 42 9V39C42 42.3137 39.3137 45 36 45H12C8.68629 45 6 42.3137 6 39V9Z" stroke="#4b5563" stroke-width="3.6"/>
+  <path d="M15 12H33M15 21H33M15 30H24" stroke="#4b5563" stroke-width="3.6" stroke-linecap="round"/>
+  <path d="M30 36L36 42L42 36" stroke="#4b5563" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
+  <!-- Minimalist Tab Sync Icon: Using context-stroke to automatically adapt to light/dark themes in Firefox -->
+  <path d="M12 18C12 11.3726 17.3726 6 24 6H72C78.6274 6 84 11.3726 84 18V78C84 84.6274 78.6274 90 72 90H24C17.3726 90 12 84.6274 12 78V18Z" stroke="context-stroke" stroke-width="7.2" stroke-opacity="0.85"/>
+  <path d="M30 24H66M30 42H66M30 60H48" stroke="context-stroke" stroke-width="7.2" stroke-linecap="round" stroke-opacity="0.85"/>
+  <path d="M60 72L72 84L84 72" stroke="context-stroke" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.85"/>
+</svg>
