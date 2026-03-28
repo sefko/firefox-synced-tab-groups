@@ -45,6 +45,13 @@ function esc(str) {
     .replace(/'/g, "&#039;");
 }
 
+/** Safer alternative to innerHTML */
+function setContent(el, htmlString) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, "text/html");
+  el.replaceChildren(...doc.body.childNodes);
+}
+
 function openableUrl(url) {
   if (!url) return "";
   try {
@@ -165,7 +172,7 @@ function render(res, query = "") {
 
   if (sortedIds.length === 0) {
     const panel = noOtherDevicesPanel(res);
-    if (panel) elRoot.innerHTML = panel;
+    if (panel) setContent(elRoot, panel);
     if (res.diag?.lastSyncWriteError) showError(res.diag.lastSyncWriteError);
     else clearError();
     return;
@@ -263,7 +270,7 @@ function render(res, query = "") {
     html.push(`</section>`);
   }
 
-  elRoot.innerHTML = html.join("");
+  setContent(elRoot, html.join(""));
   attachListeners(devices);
 }
 

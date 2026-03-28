@@ -2,17 +2,19 @@
   "manifest_version": 3,
   "name": "Synced Tab Groups",
   "version": "1.0.0",
-  "description": "Sync tab groups across devices using Firefox Account (storage.sync). Requires Firefox 138+ for tab groups APIs.",
+  "description": "Sync tab groups across devices using Firefox Account (storage.sync). Requires Firefox 139+ for tab groups APIs.",
   "browser_specific_settings": {
     "gecko": {
       "id": "synced-tab-groups@sefko.dev",
-      "strict_min_version": "138.0"
+      "strict_min_version": "139.0",
+      "data_collection_permissions": {
+        "required": ["browsingActivity"]
+      }
     }
   },
   "permissions": ["tabs", "tabGroups", "storage", "theme"],
   "background": {
-    "scripts": ["background.js"],
-    "service_worker": "background.js"
+    "scripts": ["background.js"]
   },
   "action": {
     "default_title": "Open Tab Groups Sync sidebar",
